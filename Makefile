@@ -6,9 +6,9 @@
 
 # I got this handy makefile syntax from : https://github.com/mandel59/sqlite-wasm (MIT License) Credited in LICENSE
 # To use another version of Sqlite, visit https://www.sqlite.org/download.html and copy the appropriate values here:
-SQLITE_AMALGAMATION = sqlite-amalgamation-3450200
-SQLITE_AMALGAMATION_ZIP_URL = https://www.sqlite.org/2024/sqlite-amalgamation-3450200.zip
-SQLITE_AMALGAMATION_ZIP_SHA3 = 8d9c553b52c7b1656a97fec7907cb00fd1419ac45104e45c76b7c2b81ffe0a9d
+SQLITE_AMALGAMATION = sqlite-amalgamation-3490100
+SQLITE_AMALGAMATION_ZIP_URL = https://sqlite.org/2025/sqlite-amalgamation-3490100.zip
+SQLITE_AMALGAMATION_ZIP_SHA3 = e7eb4cfb2d95626e782cfa748f534c74482f2c3c93f13ee828b9187ce05b2da7
 
 # Note that extension-functions.c hasn't been updated since 2010-02-06, so likely doesn't need to be updated
 EXTENSION_FUNCTIONS = extension-functions.c
@@ -50,6 +50,11 @@ EMFLAGS_WASM = \
 	-s WASM=1 \
 	-s ALLOW_MEMORY_GROWTH=1
 
+EMFLAGS_WASM_BROWSER = \
+	-s WASM=1 \
+	-s ALLOW_MEMORY_GROWTH=1 \
+	-s ENVIRONMENT=web,worker
+
 EMFLAGS_OPTIMIZED= \
 	-Oz \
 	-flto \
@@ -73,7 +78,7 @@ EXPORTED_METHODS_JSON_FILES = src/exported_functions.json src/exported_runtime_m
 all: optimized debug worker
 
 .PHONY: debug
-debug: dist/sql-asm-debug.js dist/sql-wasm-debug.js
+debug: dist/sql-asm-debug.js dist/sql-wasm-debug.js dist/sql-wasm-browser-debug.js
 
 dist/sql-asm-debug.js: $(BITCODE_FILES) $(OUTPUT_WRAPPER_FILES) $(SOURCE_API_FILES) $(EXPORTED_METHODS_JSON_FILES)
 	$(EMCC) $(EMFLAGS) $(EMFLAGS_DEBUG) $(EMFLAGS_ASM) $(BITCODE_FILES) $(EMFLAGS_PRE_JS_FILES) -o $@
@@ -87,8 +92,14 @@ dist/sql-wasm-debug.js: $(BITCODE_FILES) $(OUTPUT_WRAPPER_FILES) $(SOURCE_API_FI
 	cat src/shell-pre.js out/tmp-raw.js src/shell-post.js > $@
 	rm out/tmp-raw.js
 
+dist/sql-wasm-browser-debug.js: $(BITCODE_FILES) $(OUTPUT_WRAPPER_FILES) $(SOURCE_API_FILES) $(EXPORTED_METHODS_JSON_FILES)
+	$(EMCC) $(EMFLAGS) $(EMFLAGS_DEBUG) $(EMFLAGS_WASM_BROWSER) $(BITCODE_FILES) $(EMFLAGS_PRE_JS_FILES) -o $@
+	mv $@ out/tmp-raw.js
+	cat src/shell-pre.js out/tmp-raw.js src/shell-post.js > $@
+	rm out/tmp-raw.js
+
 .PHONY: optimized
-optimized: dist/sql-asm.js dist/sql-wasm.js dist/sql-asm-memory-growth.js
+optimized: dist/sql-asm.js dist/sql-wasm.js dist/sql-wasm-browser.js dist/sql-asm-memory-growth.js
 
 dist/sql-asm.js: $(BITCODE_FILES) $(OUTPUT_WRAPPER_FILES) $(SOURCE_API_FILES) $(EXPORTED_METHODS_JSON_FILES)
 	$(EMCC) $(EMFLAGS) $(EMFLAGS_OPTIMIZED) $(EMFLAGS_ASM) $(BITCODE_FILES) $(EMFLAGS_PRE_JS_FILES) -o $@
@@ -98,6 +109,12 @@ dist/sql-asm.js: $(BITCODE_FILES) $(OUTPUT_WRAPPER_FILES) $(SOURCE_API_FILES) $(
 
 dist/sql-wasm.js: $(BITCODE_FILES) $(OUTPUT_WRAPPER_FILES) $(SOURCE_API_FILES) $(EXPORTED_METHODS_JSON_FILES)
 	$(EMCC) $(EMFLAGS) $(EMFLAGS_OPTIMIZED) $(EMFLAGS_WASM) $(BITCODE_FILES) $(EMFLAGS_PRE_JS_FILES) -o $@
+	mv $@ out/tmp-raw.js
+	cat src/shell-pre.js out/tmp-raw.js src/shell-post.js > $@
+	rm out/tmp-raw.js
+
+dist/sql-wasm-browser.js: $(BITCODE_FILES) $(OUTPUT_WRAPPER_FILES) $(SOURCE_API_FILES) $(EXPORTED_METHODS_JSON_FILES)
+	$(EMCC) $(EMFLAGS) $(EMFLAGS_OPTIMIZED) $(EMFLAGS_WASM_BROWSER) $(BITCODE_FILES) $(EMFLAGS_PRE_JS_FILES) -o $@
 	mv $@ out/tmp-raw.js
 	cat src/shell-pre.js out/tmp-raw.js src/shell-post.js > $@
 	rm out/tmp-raw.js
